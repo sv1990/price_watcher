@@ -5,9 +5,9 @@ from abc import abstractmethod
 from datetime import datetime
 from pathlib import Path
 
-from selenium.webdriver import Chrome
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 
 
 class PriceWatcherBase:
@@ -16,20 +16,36 @@ class PriceWatcherBase:
         self.description = description
 
     @abstractmethod
-    def get_price_impl(self, driver: Chrome) -> float | str:
+    def get_price_impl(self) -> pd.DataFrame:
         pass
 
-    def get_price(self, driver: Chrome) -> float | str:
-        driver.get(self.url)
-        return self.get_price_impl(driver)
+    def get_price(self, now: datetime) -> float | str:
+        df = self.get_price_impl()
+        df["url"] = self.url
+        df["description"] = self.description
+        df["timestamp"] = now
+        return df
 
 
 class Otto(PriceWatcherBase):
-    def get_price_impl(self, driver: Chrome) -> float | str:
-        element = driver.find_element(
-            By.CLASS_NAME, "js_pdp_price__retail-price__value"
-        )
-        return element.text
+    def get_price_impl(self) -> pd.DataFrame:
+        response = requests.get(self.url)
+        soup = BeautifulSoup(response.text, "html.parser")
+        data = json.loads(soup.find_all(id="js_pdp_variationTrackingData")[0].string)
+        df = pd.json_normalize(data)
+        df = df.loc[
+            df["labels.hd_Price"].notna(),
+            [
+                "labels.hd_Discount",
+                "labels.hd_Availability",
+                "labels.hd_Price",
+                "labels.hd_Stock",
+                "labels.hd_Color",
+                "labels.hd_Retailer",
+            ],
+        ]
+        df.columns = df.columns.str.removeprefix("labels.hd_")
+        return df
 
 
 def main() -> None:
@@ -52,27 +68,19 @@ def main() -> None:
         ),
     ]
 
-    options = Options()
-    options.headless = True
-    driver = Chrome(options=options)
-    driver.maximize_window()
-    driver.implicitly_wait(10)
-
     output_folder = Path("data/raw")
     output_folder.mkdir(exist_ok=True, parents=True)
-    output = []
+    output: list[pd.DataFrame] = []
+    now = datetime.now()
+
     for watcher in watchers:
         try:
-            price = watcher.get_price(driver)
-            output.append(
-                {"description": watcher.description, "url": watcher.url, "price": price}
-            )
+            output.append(watcher.get_price(now))
         except Exception as e:
             print(f"{e!r}")
-    with open(
-        output_folder / f"{datetime.now().isoformat()}.json", "w", encoding="utf-8"
-    ) as f:
-        json.dump(output, f)
+    pd.concat(output, ignore_index=True).to_csv(
+        output_folder / f"{now.isoformat()}.csv", index=False
+    )
 
 
 if __name__ == "__main__":
