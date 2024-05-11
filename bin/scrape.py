@@ -56,15 +56,15 @@ def main() -> None:
         ),
         Otto(
             "https://www.otto.de/p/apple-iphone-15-128gb-smartphone-15-5-cm-6-1-zoll-128-gb-speicherplatz-48-mp-kamera-1786938266/#variationId=1786938267",
-            "iPhone 15 Black",
+            "iPhone 15",
         ),
         Otto(
             "https://www.otto.de/p/apple-iphone-14-128gb-smartphone-15-4-cm-6-1-zoll-128-gb-speicherplatz-12-mp-kamera-1676826909/#variationId=1676023634",
-            "iPhone 14 Black",
+            "iPhone 14",
         ),
         Otto(
             "https://www.otto.de/p/apple-iphone-13-smartphone-15-4-cm-6-1-zoll-128-gb-speicherplatz-12-mp-kamera-1503513747/#variationId=1503513780",
-            "iPhone 13 Midnight",
+            "iPhone 13",
         ),
     ]
 
