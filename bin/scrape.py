@@ -8,6 +8,7 @@ from time import sleep
 
 import pandas as pd
 import requests
+import retry
 from bs4 import BeautifulSoup
 
 
@@ -29,6 +30,7 @@ class PriceWatcherBase:
 
 
 class Otto(PriceWatcherBase):
+    @retry.retry(ValueError, tries=5, delay=1, max_delay=60, backoff=2, jitter=(-5, 5))
     def get_price_impl(self) -> pd.DataFrame:
         response = requests.get(self.url)
         if response.status_code != 200:
