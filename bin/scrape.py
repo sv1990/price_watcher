@@ -4,6 +4,7 @@ import json
 from abc import abstractmethod
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 
 import pandas as pd
 import requests
@@ -30,6 +31,8 @@ class PriceWatcherBase:
 class Otto(PriceWatcherBase):
     def get_price_impl(self) -> pd.DataFrame:
         response = requests.get(self.url)
+        if response.status_code != 200:
+            raise ValueError(f"Response {response.status_code}")
         soup = BeautifulSoup(response.text, "html.parser")
         data = json.loads(soup.find_all(id="js_pdp_variationTrackingData")[0].string)
         df = pd.json_normalize(data)
@@ -66,6 +69,26 @@ def main() -> None:
             "https://www.otto.de/p/apple-iphone-13-smartphone-15-4-cm-6-1-zoll-128-gb-speicherplatz-12-mp-kamera-1503513747/#variationId=1503513780",
             "iPhone 13",
         ),
+        Otto(
+            "https://www.otto.de/p/apple-watch-series-9-gps-aluminium-45mm-m-l-smartwatch-4-5-cm-1-77-zoll-watch-os-10-sport-band-1786971288/#variationId=1786971565",
+            "Apple Watch 9 45mm M/L GPS",
+        ),
+        Otto(
+            "https://www.otto.de/p/apple-watch-series-9-gps-aluminium-41mm-s-m-smartwatch-4-1-cm-1-69-zoll-watch-os-10-sport-band-1786966413/#variationId=1786966782",
+            "Apple Watch 9 41mm S/M GPS",
+        ),
+        Otto(
+            "https://www.otto.de/p/apple-watch-series-9-gps-plus-cellular-45mm-aluminium-s-m-smartwatch-4-5-cm-1-77-zoll-watch-os-10-sport-band-1786966196/#variationId=1786966578",
+            "Apple Watch 9 45mm M/L GPS+LTE",
+        ),
+        Otto(
+            "https://www.otto.de/p/apple-watch-series-9-gps-plus-cellular-41mm-aluminium-s-m-smartwatch-4-1-cm-1-61-zoll-watch-os-10-sport-band-1786965023/#variationId=1786965434",
+            "Apple Watch 9 41mm S/M GPS+LTE",
+        ),
+        Otto(
+            "https://www.otto.de/p/apple-watch-se-gps-40-mm-aluminium-s-m-smartwatch-4-cm-1-57-zoll-watch-os-10-sport-band-1786965324/#variationId=1786965487",
+            "Apple Watch SE 2 40mm S/M GPS",
+        ),
     ]
 
     output_folder = Path("data/raw")
@@ -74,10 +97,11 @@ def main() -> None:
     now = datetime.now()
 
     for watcher in watchers:
+        sleep(1)
         try:
             output.append(watcher.get_price(now))
         except Exception as e:
-            print(f"{e!r}")
+            print(f"{watcher.description}: {e!r}")
     pd.concat(output, ignore_index=True).to_csv(
         output_folder / f"{now.isoformat()}.csv", index=False
     )
